@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Vinyl Audio Player</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JS MediaTags CDN for extracting metadata from local MP3 files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+
+    <style>
+        /* Prevent selection and default callouts globally */
+        * {
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+        }
+
+        /* Prevent zooming gestures */
+        html, body {
+            touch-action: manipulation;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Continuous rotation keyframes for Vinyl Disc */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .vinyl-spin {
+            animation: spin 8s linear infinite;
+        }
+
+        .vinyl-paused {
+            animation-play-state: paused;
+        }
+
+        /* Protected Image Class */
+        .protected-img {
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            pointer-events: none;
+        }
+
+        /* Background themes with rich gradients */
+        .theme-original-dark {
+            background: #0c0b10;
+            background: linear-gradient(180deg, #181523 0%, #0c0b10 100%);
+        }
+        .theme-midnight-mesh {
+            background: #0d1117;
+            background: radial-gradient(circle at 20% 20%, #1f293d 0%, transparent 40%),
+                        radial-gradient(circle at 80% 80%, #31103f 0%, transparent 45%),
+                        radial-gradient(circle at 50% 50%, #0f172a 0%, #070a12 100%);
+        }
+        .theme-cyan-horizon {
+            background: #0f2027;
+            background: radial-gradient(circle at 80% 20%, #00d2ff 0%, transparent 35%),
+                        radial-gradient(circle at 20% 80%, #3a7bd5 0%, transparent 40%),
+                        linear-gradient(135deg, #09121d 0%, #0f2027 50%, #203a43 100%);
+        }
+        .theme-radiant-dusk {
+            background: #2b1055;
+            background: radial-gradient(circle at 50% 20%, rgba(255, 94, 98, 0.8) 0%, transparent 40%),
+                        radial-gradient(circle at 10% 80%, rgba(138, 43, 226, 0.9) 0%, transparent 50%),
+                        linear-gradient(180deg, #1d0731 0%, #0c021a 100%);
+        }
+        .theme-soft-pink-blue {
+            background: #EEAECA;
+            background: linear-gradient(103deg, rgba(238, 174, 202, 1) 0%, rgba(148, 187, 233, 1) 100%);
+        }
+        .theme-pastel-radial {
+            background: #EEAECA;
+            background: radial-gradient(circle, rgba(238, 174, 202, 1) 0%, rgba(234, 175, 203, 1) 21%, rgba(148, 187, 233, 1) 100%);
+        }
+        .theme-deep-slate-radial {
+            background: #EEAECA;
+            background: radial-gradient(circle, rgba(238, 174, 202, 1) 0%, rgba(234, 175, 203, 1) 21%, rgba(65, 92, 125, 1) 98%, rgba(148, 187, 233, 1) 100%);
+        }
+        .theme-crimson-velvet {
+            background: #180812;
+            background: radial-gradient(circle at 15% 15%, rgba(220, 20, 60, 0.95) 0%, rgba(35, 10, 30, 0.95) 45%, rgba(10, 5, 18, 1) 75%, rgba(230, 55, 15, 0.95) 100%);
+        }
+        .theme-violet-magenta {
+            background: #3b1845;
+            background: linear-gradient(135deg, rgba(160, 110, 240, 1) 0%, rgba(185, 90, 190, 1) 40%, rgba(125, 45, 140, 1) 70%, rgba(20, 10, 45, 1) 100%);
+        }
+        .theme-neon-purple-sunset {
+            background: #3a1040;
+            background: radial-gradient(circle at 70% 30%, rgba(95, 25, 140, 1) 0%, rgba(210, 15, 145, 1) 45%, rgba(255, 110, 40, 1) 100%);
+        }
+        .theme-deep-cosmic-blue {
+            background: #081437;
+            background: radial-gradient(circle at 85% 75%, rgba(140, 225, 255, 1) 0%, rgba(15, 80, 170, 1) 40%, rgba(8, 20, 55, 1) 75%, rgba(3, 8, 25, 1) 100%);
+        }
+
+        /* Range Slider styling - Horizontal Track */
+        input[type="range"].horizontal-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"].horizontal-slider::-webkit-slider-runnable-track {
+            height: 3px;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.3);
+        }
+        input[type="range"].horizontal-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: #ffffff;
+            margin-top: -4.5px;
+            box-shadow: 0 0 6px rgba(0,0,0,0.4);
+            transition: transform 0.1s;
+        }
+        input[type="range"].horizontal-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+
+        /* Vertical Volume Slider Styling */
+        input[type="range"].vertical-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            writing-mode: bt-lr;
+            -webkit-appearance: slider-vertical;
+            width: 6px;
+            height: 90px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 9999px;
+            cursor: pointer;
+        }
+        input[type="range"].vertical-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 0 6px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+<body id="appBody" class="theme-original-dark h-screen w-screen text-white font-sans flex flex-col items-center justify-between p-4 sm:p-6 transition-all duration-700 select-none overflow-hidden">
+
+    <!-- Subtle Top Control Bar -->
+    <header class="w-full max-w-sm flex items-center justify-between z-20 shrink-0">
+        <!-- Logo Container -->
+        <div class="flex items-center select-none" oncontextmenu="return false;">
+            <img src="1000115918.png" alt="Logo" draggable="false" oncontextmenu="return false;" class="h-10 sm:h-12 w-auto object-contain protected-img">
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <!-- Playlist Drawer Trigger -->
+            <button id="playlistToggleBtn" title="Open Playlist" class="p-1.5 text-white/70 hover:text-white transition-colors flex items-center space-x-1">
+                <i data-lucide="list-music" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Theme Menu Dropdown -->
+            <div class="relative">
+                <button id="themeBtn" title="Change Theme" class="p-1.5 text-white/70 hover:text-white transition-colors flex items-center space-x-1 text-xs">
+                    <i data-lucide="palette" class="w-4 h-4"></i>
+                </button>
+                
+                <div id="themeMenu" class="hidden absolute right-0 mt-2 w-60 rounded-2xl bg-black/70 backdrop-blur-xl p-2 shadow-2xl border border-white/10 z-50 space-y-1 text-xs max-h-80 overflow-y-auto">
+                    <button onclick="setTheme('theme-original-dark')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-gradient-to-b from-[#181523] to-[#0c0b10] border border-white/20 shrink-0"></span>
+                        <span>Original Dark</span>
+                    </button>
+                    <button onclick="setTheme('theme-midnight-mesh')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-gradient-to-br from-[#1f293d] via-[#31103f] to-[#070a12] shrink-0"></span>
+                        <span>Deep Midnight Mesh</span>
+                    </button>
+                    <button onclick="setTheme('theme-cyan-horizon')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-gradient-to-br from-[#00d2ff] via-[#3a7bd5] to-[#0f2027] shrink-0"></span>
+                        <span>Neon Cyan Horizon</span>
+                    </button>
+                    <button onclick="setTheme('theme-radiant-dusk')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-gradient-to-br from-[#ff5e62] via-[#8a2be2] to-[#0c021a] shrink-0"></span>
+                        <span>Radiant Dusk Glow</span>
+                    </button>
+                    <button onclick="setTheme('theme-soft-pink-blue')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-gradient-to-r from-[#EEAECA] to-[#94BEE9] shrink-0"></span>
+                        <span>Soft Pink-Blue</span>
+                    </button>
+                    <button onclick="setTheme('theme-pastel-radial')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-[radial-gradient(circle,#EEAECA,#EA9CB7,#94BEE9)] shrink-0"></span>
+                        <span>Pastel Radial Glow</span>
+                    </button>
+                    <button onclick="setTheme('theme-deep-slate-radial')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-[radial-gradient(circle,#EEAECA,#EA9CB7,#415C7D,#94BEE9)] shrink-0"></span>
+                        <span>Deep Slate Radial Blend</span>
+                    </button>
+                    <button onclick="setTheme('theme-crimson-velvet')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-[radial-gradient(circle_at_15%_15%,#dc143c,#230a1e,#0a0512,#e6370f)] shrink-0"></span>
+                        <span>Crimson Velvet Glow</span>
+                    </button>
+                    <button onclick="setTheme('theme-violet-magenta')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-gradient-to-br from-[#a06ef0] via-[#b95abe] to-[#140a2d] shrink-0"></span>
+                        <span>Violet Magenta Gradient</span>
+                    </button>
+                    <button onclick="setTheme('theme-neon-purple-sunset')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-[radial-gradient(circle_at_70%_30%,#5f198c,#d20f91,#ff6e28)] shrink-0"></span>
+                        <span>Neon Purple Sunset</span>
+                    </button>
+                    <button onclick="setTheme('theme-deep-cosmic-blue')" class="w-full text-left px-3 py-2 rounded-xl flex items-center space-x-2.5 hover:bg-white/10 transition">
+                        <span class="w-4 h-4 rounded-full bg-[radial-gradient(circle_at_85%_75%,#8ce1ff,#0f50aa,#081437)] shrink-0"></span>
+                        <span>Deep Cosmic Blue</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Player Layout -->
+    <main class="w-full max-w-sm flex-1 flex flex-col justify-evenly items-center py-2">
+
+        <!-- Disc + Track Meta Container -->
+        <div class="flex flex-col items-center space-y-4">
+            <!-- Vinyl Record Container -->
+            <div class="relative group">
+                <div id="vinylDisc" class="vinyl-spin vinyl-paused relative w-64 h-64 sm:w-72 sm:h-72 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex items-center justify-center overflow-hidden transition-transform duration-500">
+                    
+                    <!-- Bottom Layer: Song Album Art Image (shown when track has art) -->
+                    <img id="albumArtImg" src="" alt="Album Cover" class="hidden absolute inset-0 w-full h-full object-cover protected-img" draggable="false" oncontextmenu="return false;">
+
+                    <!-- Top Layer: Custom Vinyl Image Overlay with screen blend mode -->
+                    <img id="vinylOverlayImg" src="" alt="Vinyl Disc" class="absolute inset-0 w-full h-full object-cover pointer-events-none protected-img" draggable="false" oncontextmenu="return false;">
+
+                </div>
+            </div>
+
+            <!-- Seamless Empty State Track Metadata -->
+            <div class="text-center space-y-1">
+                <h1 id="songTitle" class="text-2xl sm:text-3xl font-semibold tracking-tight text-white/95">No Track Loaded</h1>
+                <p id="songArtist" class="text-sm text-white/60 font-normal">Select an audio file</p>
+            </div>
+        </div>
+
+        <!-- Seamless Audio Controls Layout -->
+        <div class="w-full space-y-3 px-2">
+
+            <!-- Native Player Progress Bar Overlay -->
+            <div class="space-y-1.5">
+                <div class="flex items-center space-x-3">
+                    <!-- Restart Song Button -->
+                    <button id="restartBtn" title="Restart Track" class="text-white/80 hover:text-white focus:outline-none transition-transform active:scale-90">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                    
+                    <input type="range" id="progressBar" value="0" min="0" max="100" class="horizontal-slider flex-1 accent-white" />
+
+                    <!-- Vertical Volume Popover -->
+                    <div class="relative group flex items-center">
+                        <button id="volumeBtn" class="text-white/70 hover:text-white p-1 transition-colors">
+                            <i id="volumeIcon" data-lucide="volume-2" class="w-4 h-4"></i>
+                        </button>
+                        <!-- Vertical Volume Slider Dropup -->
+                        <div class="hidden group-hover:flex group-focus-within:flex absolute right-0 bottom-full mb-3 p-3 bg-black/60 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 z-40 flex-col items-center">
+                            <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.8" class="vertical-slider accent-white" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-[11px] font-mono text-white/50 px-7">
+                    <span id="subTimeStart">0:00</span>
+                    <span id="subTimeEnd">0:00</span>
+                </div>
+            </div>
+
+            <!-- Main Playback Control Bar -->
+            <div class="flex items-center justify-between px-4 pt-1">
+                <button id="shuffleBtn" title="Toggle Shuffle" class="text-white/70 hover:text-white transition-colors p-2">
+                    <i data-lucide="shuffle" class="w-5 h-5"></i>
+                </button>
+
+                <button id="prevBtn" title="Previous Track" class="text-white/90 hover:text-white transition-transform active:scale-90 p-2">
+                    <i data-lucide="skip-back" class="w-6 h-6"></i>
+                </button>
+
+                <!-- Direct Play/Pause Toggle Button with inline SVG rendering -->
+                <button id="mainPlayBtn" title="Play / Pause" class="text-white/90 hover:text-white transition-transform active:scale-90 p-2 focus:outline-none flex items-center justify-center">
+                    <span id="playIconContainer">
+                        <svg class="w-8 h-8 sm:w-9 sm:h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                    </span>
+                </button>
+
+                <button id="nextBtn" title="Next Track" class="text-white/90 hover:text-white transition-transform active:scale-90 p-2">
+                    <i data-lucide="skip-forward" class="w-6 h-6"></i>
+                </button>
+
+                <button id="repeatBtn" title="Toggle Repeat Mode" class="text-white/70 hover:text-white transition-colors p-2">
+                    <i data-lucide="repeat" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Playlist Drawer Modal -->
+    <div id="playlistDrawer" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 hidden transition-opacity flex justify-end">
+        <div class="w-full max-w-xs h-full bg-black/80 p-4 flex flex-col justify-between border-l border-white/10">
+            <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="music" class="w-5 h-5 text-white/80"></i>
+                    <h2 class="font-semibold text-base">Playlist</h2>
+                </div>
+                <button id="closePlaylistBtn" class="p-1 text-white/60 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Playlist items container -->
+            <div id="playlistContainer" class="flex-1 overflow-y-auto py-3 space-y-1.5 my-2">
+                <!-- Populated automatically from Google Drive -->
+            </div>
+
+            <!-- Local Import Fallback -->
+            <div class="pt-3 border-t border-white/10">
+                <input type="file" id="fileInput" accept="audio/*" multiple class="hidden" />
+                <button id="addFilesBtn" class="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center space-x-2 text-xs font-medium">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Add Local Songs</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden HTML5 Audio Element -->
+    <audio id="audioPlayer" preload="metadata"></audio>
+
+    <script>
+        // Disable page zoom gestures (pinch to zoom, double tap zoom, scroll zoom)
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        document.addEventListener('wheel', function(e) {
+            if (e.ctrlKey) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+
+        // =========================================================
+        // CONFIGURATION
+        // =========================================================
+        const NO_COVER_VINYL_IMG = 'No im.png';
+        const SCREEN_BLEND_VINYL_IMG = 'Blend.png';
+        const GOOGLE_DRIVE_API_URL = 'https://script.google.com/macros/s/AKfycbzUXTk1j4x06-vUSlRS4eYzS0U0jnCckELnhqGUuxSgO8cKjSp3lelgNxKx32McZiNpaA/exec';
+
+        // Inline SVG Definitions
+        const PLAY_SVG = `<svg class="w-8 h-8 sm:w-9 sm:h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+        const PAUSE_SVG = `<svg class="w-8 h-8 sm:w-9 sm:h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+
+        // --- State Management ---
+        const state = {
+            playlist: [],
+            currentIndex: -1,
+            isPlaying: false,
+            isShuffle: false,
+            repeatMode: 'none',
+            currentTheme: 'theme-original-dark'
+        };
+
+        // --- DOM Elements ---
+        const audioPlayer = document.getElementById('audioPlayer');
+        const mainPlayBtn = document.getElementById('mainPlayBtn');
+        const playIconContainer = document.getElementById('playIconContainer');
+        const restartBtn = document.getElementById('restartBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const repeatBtn = document.getElementById('repeatBtn');
+        const progressBar = document.getElementById('progressBar');
+        const subTimeStart = document.getElementById('subTimeStart');
+        const subTimeEnd = document.getElementById('subTimeEnd');
+        const songTitle = document.getElementById('songTitle');
+        const songArtist = document.getElementById('songArtist');
+        const vinylDisc = document.getElementById('vinylDisc');
+        const albumArtImg = document.getElementById('albumArtImg');
+        const vinylOverlayImg = document.getElementById('vinylOverlayImg');
+        const themeBtn = document.getElementById('themeBtn');
+        const themeMenu = document.getElementById('themeMenu');
+        const playlistToggleBtn = document.getElementById('playlistToggleBtn');
+        const playlistDrawer = document.getElementById('playlistDrawer');
+        const closePlaylistBtn = document.getElementById('closePlaylistBtn');
+        const playlistContainer = document.getElementById('playlistContainer');
+        const fileInput = document.getElementById('fileInput');
+        const addFilesBtn = document.getElementById('addFilesBtn');
+        const volumeBtn = document.getElementById('volumeBtn');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeIcon = document.getElementById('volumeIcon');
+
+        // Initialize default vinyl image state
+        vinylOverlayImg.src = NO_COVER_VINYL_IMG;
+
+        function setPlayState(playing) {
+            state.isPlaying = playing;
+            if (playing) {
+                vinylDisc.classList.remove('vinyl-paused');
+                playIconContainer.innerHTML = PAUSE_SVG;
+            } else {
+                vinylDisc.classList.add('vinyl-paused');
+                playIconContainer.innerHTML = PLAY_SVG;
+            }
+        }
+
+        function loadTrack(index) {
+            if (index < 0 || index >= state.playlist.length) return;
+            state.currentIndex = index;
+            const track = state.playlist[index];
+
+            audioPlayer.src = track.src;
+            songTitle.textContent = track.title || 'Unknown Title';
+            songArtist.textContent = track.artist || 'Google Drive';
+
+            if (track.art) {
+                albumArtImg.src = track.art;
+                albumArtImg.classList.remove('hidden');
+
+                vinylOverlayImg.src = SCREEN_BLEND_VINYL_IMG;
+                vinylOverlayImg.style.mixBlendMode = 'screen';
+            } else {
+                albumArtImg.classList.add('hidden');
+
+                vinylOverlayImg.src = NO_COVER_VINYL_IMG;
+                vinylOverlayImg.style.mixBlendMode = 'normal';
+            }
+
+            updatePlaylistUI();
+        }
+
+        function togglePlay() {
+            if (state.playlist.length === 0) {
+                playlistDrawer.classList.remove('hidden');
+                return;
+            }
+
+            if (state.currentIndex === -1 && state.playlist.length > 0) {
+                loadTrack(0);
+            }
+
+            if (!audioPlayer.src) return;
+
+            if (audioPlayer.paused) {
+                audioPlayer.play().then(() => setPlayState(true)).catch(err => console.log('Playback error:', err));
+            } else {
+                audioPlayer.pause();
+                setPlayState(false);
+            }
+        }
+
+        function restartTrack() {
+            if (!audioPlayer.src) return;
+            audioPlayer.currentTime = 0;
+            if (audioPlayer.paused) {
+                audioPlayer.play().then(() => setPlayState(true)).catch(err => console.log('Playback error:', err));
+            }
+        }
+
+        function playNextTrack() {
+            if (state.playlist.length === 0) return;
+            if (state.isShuffle) {
+                const randomIndex = Math.floor(Math.random() * state.playlist.length);
+                loadTrack(randomIndex);
+            } else {
+                const nextIndex = (state.currentIndex + 1) % state.playlist.length;
+                loadTrack(nextIndex);
+            }
+            audioPlayer.play().then(() => setPlayState(true)).catch(err => console.log('Playback error:', err));
+        }
+
+        function playPrevTrack() {
+            if (state.playlist.length === 0) return;
+            let prevIndex = state.currentIndex - 1;
+            if (prevIndex < 0) prevIndex = state.playlist.length - 1;
+            loadTrack(prevIndex);
+            audioPlayer.play().then(() => setPlayState(true)).catch(err => console.log('Playback error:', err));
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function setTheme(themeClass) {
+            const appBody = document.getElementById('appBody');
+            appBody.className = `${themeClass} h-screen w-screen text-white font-sans flex flex-col items-center justify-between p-4 sm:p-6 transition-all duration-700 select-none overflow-hidden`;
+            state.currentTheme = themeClass;
+            themeMenu.classList.add('hidden');
+        }
+
+        function renderEmptyPlaylistState() {
+            playlistContainer.innerHTML = `
+                <div class="h-full flex flex-col items-center justify-center text-center p-4 text-white/50 space-y-2">
+                    <i data-lucide="music-4" class="w-8 h-8 opacity-40"></i>
+                    <p class="text-xs">Loading Google Drive songs...</p>
+                </div>
+            `;
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function updatePlaylistUI() {
+            if (state.playlist.length === 0) {
+                renderEmptyPlaylistState();
+                return;
+            }
+
+            playlistContainer.innerHTML = '';
+            state.playlist.forEach((track, idx) => {
+                const isCurrent = idx === state.currentIndex;
+                const item = document.createElement('div');
+                item.className = `p-2.5 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                    isCurrent ? 'bg-white/20 border border-white/20' : 'hover:bg-white/10'
+                }`;
+                item.onclick = () => {
+                    loadTrack(idx);
+                    audioPlayer.play().then(() => setPlayState(true)).catch(err => console.log('Playback error:', err));
+                };
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3 truncate">
+                        <div class="w-8 h-8 rounded-lg bg-black/40 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            ${track.art ? `<img src="${track.art}" class="w-full h-full object-cover"/>` : `<i data-lucide="disc" class="w-4 h-4 text-white/60"></i>`}
+                        </div>
+                        <div class="truncate">
+                            <p class="text-xs font-semibold truncate ${isCurrent ? 'text-white' : 'text-white/80'}">${track.title}</p>
+                            <p class="text-[10px] text-white/50 truncate">${track.artist}</p>
+                        </div>
+                    </div>
+                    ${isCurrent ? `<div class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></div>` : ''}
+                `;
+                playlistContainer.appendChild(item);
+            });
+            if (window.lucide) lucide.createIcons();
+        }
+
+        // Fetch songs from Google Drive on startup
+        function loadGoogleDriveSongs() {
+            fetch(GOOGLE_DRIVE_API_URL)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        state.playlist = data;
+                        updatePlaylistUI();
+                        loadTrack(0);
+                    } else {
+                        playlistContainer.innerHTML = `<div class="p-4 text-center text-xs text-white/50">No audio files found in folder.</div>`;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching Google Drive songs:', err);
+                    playlistContainer.innerHTML = `<div class="p-4 text-center text-xs text-red-400">Failed to load songs from Drive.</div>`;
+                });
+        }
+
+        window.onload = () => {
+            renderEmptyPlaylistState();
+            loadGoogleDriveSongs();
+
+            audioPlayer.addEventListener('play', () => setPlayState(true));
+            audioPlayer.addEventListener('playing', () => setPlayState(true));
+            audioPlayer.addEventListener('pause', () => setPlayState(false));
+
+            audioPlayer.addEventListener('timeupdate', () => {
+                if (!isNaN(audioPlayer.duration) && audioPlayer.duration > 0) {
+                    const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                    progressBar.value = progress;
+                    subTimeStart.textContent = formatTime(audioPlayer.currentTime);
+                    subTimeEnd.textContent = formatTime(audioPlayer.duration);
+                } else {
+                    progressBar.value = 0;
+                    subTimeStart.textContent = '0:00';
+                    subTimeEnd.textContent = '0:00';
+                }
+            });
+
+            audioPlayer.addEventListener('ended', () => {
+                if (state.repeatMode === 'one') {
+                    audioPlayer.currentTime = 0;
+                    audioPlayer.play().then(() => setPlayState(true)).catch(err => console.log('Playback error:', err));
+                } else {
+                    playNextTrack();
+                }
+            });
+
+            mainPlayBtn.onclick = togglePlay;
+            restartBtn.onclick = restartTrack;
+            prevBtn.onclick = playPrevTrack;
+            nextBtn.onclick = playNextTrack;
+
+            progressBar.addEventListener('input', (e) => {
+                if (audioPlayer.duration) {
+                    audioPlayer.currentTime = (e.target.value / 100) * audioPlayer.duration;
+                }
+            });
+
+            volumeSlider.addEventListener('input', (e) => {
+                audioPlayer.volume = e.target.value;
+                if (e.target.value == 0) {
+                    volumeIcon.setAttribute('data-lucide', 'volume-x');
+                } else if (e.target.value < 0.5) {
+                    volumeIcon.setAttribute('data-lucide', 'volume-1');
+                } else {
+                    volumeIcon.setAttribute('data-lucide', 'volume-2');
+                }
+                if (window.lucide) lucide.createIcons();
+            });
+
+            shuffleBtn.onclick = () => {
+                state.isShuffle = !state.isShuffle;
+                shuffleBtn.classList.toggle('text-cyan-400', state.isShuffle);
+                shuffleBtn.classList.toggle('text-white/60', !state.isShuffle);
+            };
+
+            repeatBtn.onclick = () => {
+                if (state.repeatMode === 'none') {
+                    state.repeatMode = 'all';
+                    repeatBtn.className = 'text-cyan-400 transition-colors p-2';
+                } else if (state.repeatMode === 'all') {
+                    state.repeatMode = 'one';
+                    repeatBtn.className = 'text-cyan-400 relative transition-colors p-2';
+                } else {
+                    state.repeatMode = 'none';
+                    repeatBtn.className = 'text-white/60 transition-colors p-2';
+                }
+            };
+
+            themeBtn.onclick = (e) => {
+                e.stopPropagation();
+                themeMenu.classList.toggle('hidden');
+            };
+
+            document.addEventListener('click', (e) => {
+                if (!themeMenu.contains(e.target) && e.target !== themeBtn) {
+                    themeMenu.classList.add('hidden');
+                }
+            });
+
+            playlistToggleBtn.onclick = () => playlistDrawer.classList.remove('hidden');
+            closePlaylistBtn.onclick = () => playlistDrawer.classList.add('hidden');
+
+            addFilesBtn.onclick = () => fileInput.click();
+            fileInput.onchange = (e) => {
+                Array.from(e.target.files).forEach(file => {
+                    state.playlist.push({
+                        title: file.name.replace(/\.[^/.]+$/, ""),
+                        artist: 'Local',
+                        src: URL.createObjectURL(file),
+                        art: null
+                    });
+                });
+                updatePlaylistUI();
+            };
+
+            if (window.lucide) lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
