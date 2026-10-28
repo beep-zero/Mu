@@ -1,0 +1,86 @@
+<!-- ... existing code ... -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Vinyl Audio Player</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JS MediaTags CDN for extracting metadata from local MP3 files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+
+    <style>
+        /* Prevent selection and default callouts globally */
+        * {
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+        }
+
+        /* Prevent zooming gestures */
+        html, body {
+            touch-action: manipulation;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Custom scrollbar styling */
+<!-- ... existing code -->
+        /* Protected Image Class */
+        .protected-img {
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body id="appBody" class="theme-original-dark h-screen w-screen text-white font-sans flex flex-col items-center justify-between p-4 sm:p-6 transition-all duration-700 select-none overflow-hidden">
+
+    <!-- Subtle Top Control Bar -->
+    <header class="w-full max-w-sm flex items-center justify-between z-20 shrink-0">
+        <!-- Logo Container with larger dimensions, protected from drag/long-press/context menu -->
+        <div class="flex items-center select-none" oncontextmenu="return false;">
+            <img src="1000115918.png" alt="Ibucatto Music Player Logo" draggable="false" oncontextmenu="return false;" class="h-20 sm:h-24 w-auto object-contain protected-img">
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <!-- Playlist Drawer Trigger -->
+<!-- ... existing code -->
+    <!-- Hidden HTML5 Audio Element -->
+    <audio id="audioPlayer" preload="metadata"></audio>
+
+    <script>
+        // Disable page zoom gestures (pinch to zoom, double tap zoom, scroll zoom)
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        document.addEventListener('wheel', function(e) {
+            if (e.ctrlKey) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+
+        // File paths configured for your image files
+        const NO_COVER_VINYL_IMG = 'No im.png';
+<!-- ... existing code ... -->
