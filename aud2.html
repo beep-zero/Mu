@@ -450,31 +450,55 @@
                 playIconContainer.innerHTML = PLAY_SVG;
             }
         }
+async function loadTrack(index) {
+    if (index < 0 || index >= state.playlist.length) return;
+    state.currentIndex = index;
+    const track = state.playlist[index];
 
-        function loadTrack(index) {
-            if (index < 0 || index >= state.playlist.length) return;
-            state.currentIndex = index;
-            const track = state.playlist[index];
+    songTitle.textContent = track.title || 'Unknown Title';
+    songArtist.textContent = track.artist || 'Google Drive';
 
-            audioPlayer.src = track.src;
-            songTitle.textContent = track.title || 'Unknown Title';
-            songArtist.textContent = track.artist || 'Google Drive';
+    // Handle Vinyl Artwork UI
+    if (track.art) {
+        albumArtImg.src = track.art;
+        albumArtImg.classList.remove('hidden');
+        vinylOverlayImg.src = SCREEN_BLEND_VINYL_IMG;
+        vinylOverlayImg.style.mixBlendMode = 'screen';
+    } else {
+        albumArtImg.classList.add('hidden');
+        vinylOverlayImg.src = NO_COVER_VINYL_IMG;
+        vinylOverlayImg.style.mixBlendMode = 'normal';
+    }
 
-            if (track.art) {
-                albumArtImg.src = track.art;
-                albumArtImg.classList.remove('hidden');
+    updatePlaylistUI();
 
-                vinylOverlayImg.src = SCREEN_BLEND_VINYL_IMG;
-                vinylOverlayImg.style.mixBlendMode = 'screen';
-            } else {
-                albumArtImg.classList.add('hidden');
-
-                vinylOverlayImg.src = NO_COVER_VINYL_IMG;
-                vinylOverlayImg.style.mixBlendMode = 'normal';
-            }
-
-            updatePlaylistUI();
+    // CACHING WORKAROUND: Fetch file into browser memory as a local Blob
+    try {
+        songTitle.textContent = "Caching " + (track.title || 'Track') + "...";
+        
+        // Use a reliable public CORS proxy to bypass Google Drive's fetch restriction
+        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(track.src);
+        const response = await fetch(proxyUrl);
+        
+        if (!response.ok) throw new Error('Network response failed');
+        
+        const blob = await response.blob();
+        const localBlobUrl = URL.createObjectURL(blob);
+        
+        audioPlayer.src = localBlobUrl;
+        songTitle.textContent = track.title || 'Unknown Title'; // Restore title
+        
+        // Auto-play if player was already active
+        if (state.isPlaying) {
+            audioPlayer.play().then(() => setPlayState(true)).catch(err => console.log('Playback error:', err));
         }
+    } catch (err) {
+        console.warn('Blob caching failed, falling back to direct link:', err);
+        // Fallback to direct stream if proxy fails
+        audioPlayer.src = track.src;
+        songTitle.textContent = track.title || 'Unknown Title';
+    }
+}
 
         function togglePlay() {
             if (state.playlist.length === 0) {
