@@ -450,12 +450,11 @@
                 playIconContainer.innerHTML = PLAY_SVG;
             }
         }
-function loadTrack(index) {
+async function loadTrack(index) {
         if (index < 0 || index >= state.playlist.length) return;
         state.currentIndex = index;
         const track = state.playlist[index];
 
-        audioPlayer.src = track.src;
         songTitle.textContent = track.title || 'Unknown Title';
         songArtist.textContent = track.artist || 'Google Drive';
 
@@ -473,9 +472,29 @@ function loadTrack(index) {
 
         updatePlaylistUI();
 
-        // Auto-play if player was already active
-        if (state.isPlaying) {
-            audioPlayer.play().then(() => setPlayState(true)).catch(err => console.log('Playback error:', err));
+        // CACHING WORKAROUND VIA YOUR CLOUDFLARE WORKER
+        try {
+            songTitle.textContent = "Loading " + (track.title || 'Track') + "...";
+            
+            // Your personal Cloudflare proxy URL
+            const workerProxyUrl = 'https://audio-drive-proxy.anannaytanamay.workers.dev/?url=' + encodeURIComponent(track.src);
+            
+            const response = await fetch(workerProxyUrl);
+            if (!response.ok) throw new Error('Proxy fetch failed');
+            
+            const blob = await response.blob();
+            const localBlobUrl = URL.createObjectURL(blob);
+            
+            audioPlayer.src = localBlobUrl;
+            songTitle.textContent = track.title || 'Unknown Title'; // Restore title
+            
+            if (state.isPlaying) {
+                audioPlayer.play().then(() => setPlayState(true)).catch(err => console.log('Playback error:', err));
+            }
+        } catch (err) {
+            console.warn('Blob caching via worker failed, falling back to direct link:', err);
+            audioPlayer.src = track.src;
+            songTitle.textContent = track.title || 'Unknown Title';
         }
 }
 
