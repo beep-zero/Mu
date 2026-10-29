@@ -392,7 +392,7 @@
         // =========================================================
         const NO_COVER_VINYL_IMG = 'No im.png';
         const SCREEN_BLEND_VINYL_IMG = 'Blend.png';
-        const GOOGLE_DRIVE_API_URL = 'https://script.google.com/macros/s/AKfycbyii1wDp-u8jSufNlK42xY62tgpGVReRBYrursjswX4jqdJgjZkyUCuK5yk6AFCDeYw3g/exec';
+        const GOOGLE_DRIVE_API_URL = 'https://script.google.com/macros/s/AKfycbyXZ12Pd4Mc5qKVwhj76xybfz57i8-xbukvqY2Eo4mNLlYOPskZBNaz53mulyA3Nj9Sxg/exec';
 
         // Inline SVG Definitions
         const PLAY_SVG = `<svg class="w-8 h-8 sm:w-9 sm:h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
@@ -450,54 +450,33 @@
                 playIconContainer.innerHTML = PLAY_SVG;
             }
         }
-async function loadTrack(index) {
-    if (index < 0 || index >= state.playlist.length) return;
-    state.currentIndex = index;
-    const track = state.playlist[index];
+function loadTrack(index) {
+        if (index < 0 || index >= state.playlist.length) return;
+        state.currentIndex = index;
+        const track = state.playlist[index];
 
-    songTitle.textContent = track.title || 'Unknown Title';
-    songArtist.textContent = track.artist || 'Google Drive';
+        audioPlayer.src = track.src;
+        songTitle.textContent = track.title || 'Unknown Title';
+        songArtist.textContent = track.artist || 'Google Drive';
 
-    // Handle Vinyl Artwork UI
-    if (track.art) {
-        albumArtImg.src = track.art;
-        albumArtImg.classList.remove('hidden');
-        vinylOverlayImg.src = SCREEN_BLEND_VINYL_IMG;
-        vinylOverlayImg.style.mixBlendMode = 'screen';
-    } else {
-        albumArtImg.classList.add('hidden');
-        vinylOverlayImg.src = NO_COVER_VINYL_IMG;
-        vinylOverlayImg.style.mixBlendMode = 'normal';
-    }
+        // Handle Vinyl Artwork UI
+        if (track.art) {
+            albumArtImg.src = track.art;
+            albumArtImg.classList.remove('hidden');
+            vinylOverlayImg.src = SCREEN_BLEND_VINYL_IMG;
+            vinylOverlayImg.style.mixBlendMode = 'screen';
+        } else {
+            albumArtImg.classList.add('hidden');
+            vinylOverlayImg.src = NO_COVER_VINYL_IMG;
+            vinylOverlayImg.style.mixBlendMode = 'normal';
+        }
 
-    updatePlaylistUI();
+        updatePlaylistUI();
 
-    // CACHING WORKAROUND: Fetch file into browser memory as a local Blob
-    try {
-        songTitle.textContent = "Caching " + (track.title || 'Track') + "...";
-        
-        // Use a reliable public CORS proxy to bypass Google Drive's fetch restriction
-        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(track.src);
-        const response = await fetch(proxyUrl);
-        
-        if (!response.ok) throw new Error('Network response failed');
-        
-        const blob = await response.blob();
-        const localBlobUrl = URL.createObjectURL(blob);
-        
-        audioPlayer.src = localBlobUrl;
-        songTitle.textContent = track.title || 'Unknown Title'; // Restore title
-        
         // Auto-play if player was already active
         if (state.isPlaying) {
             audioPlayer.play().then(() => setPlayState(true)).catch(err => console.log('Playback error:', err));
         }
-    } catch (err) {
-        console.warn('Blob caching failed, falling back to direct link:', err);
-        // Fallback to direct stream if proxy fails
-        audioPlayer.src = track.src;
-        songTitle.textContent = track.title || 'Unknown Title';
-    }
 }
 
         function togglePlay() {
